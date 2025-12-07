@@ -109,7 +109,9 @@ $ source .venv/bin/activate       # Windows: .venv\Scripts\activate
 
 $ pip install --upgrade 
 
-$ pip  pip install -r requirements.txt  uvicorn main:app --host 127.0.0.1 --port 8765   
+$ pip install -r requirements.txt
+
+$ uvicorn main:app --host 127.0.0.1 --port 8765   
 
 ```
 *   First run downloads dslim/bert-base-NER (~400MB) to ~/.cache/huggingface.
