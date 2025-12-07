@@ -1,22 +1,56 @@
-# PrivacyFirewall (Local LLM DLP)
+**PrivacyFirewall (Local AI Privacy Shield / Local LLM DLP)**
+=============================================================
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+**PrivacyFirewall** is a **local-first PII and secrets firewall** for AI tools like ChatGPT, Claude, and Gemini.It blocks risky paste events, warns as you type, and (optionally) uses a **lightweight on-device Transformer model** for deeper PII detection.
 
-Local-first PII and secrets firewall for AI tools. Blocks risky paste events, warns while you type, and uses a lightweight on-device AI model—no data leaves your machine.
+🔒 **No data ever leaves your machine.**Everything runs **locally in your browser** or through an **optional local API**.You can verify this by inspecting the network panel and reading the open-source code.
 
-## Why this project
-- Keep human-in-the-loop: stop accidental leaks before they hit third-party AI chats.
-- 100% local: content never leaves the browser; optional local API runs on localhost.
-- Practical detections: fast regex patterns plus transformer NER for people/orgs/locations.
-- Friendly UX: inline warnings, paste-block modal with overrides, status banner for engine health.
-- OSS and auditable: minimal stack (MV3 + FastAPI + Hugging Face transformers).
+🚨 **Why This Project Exists**
+------------------------------
 
-## How it works
-- **Chrome extension** (`src/extension`): content script intercepts paste/typing on popular AI chat sites, runs regex checks, and shows the firewall modal. Background worker polls the local engine for health and proxies AI scans.
-- **Local engine** (`src/engine`): FastAPI server at `http://127.0.0.1:8765` running the `dslim/bert-base-NER` transformer to flag PII entities. First run downloads the model to `~/.cache/huggingface`; all inference stays local.
-- **Fallbacks**: If the engine is offline, regex mode still protects pastes. When online, AI results enhance detection.
+Modern AI tools make it extremely easy to leak sensitive information:
 
-### Architecture
+*   Emails & phone numbers
+    
+*   API keys & credentials
+    
+*   Customer or employee data
+
+*   IP & MAC address  
+    
+*   Internal logs & stack traces
+    
+*   Regulated personal information (PII/PHI)
+    
+
+Traditional enterprise DLP tools don’t cover **AI chat prompts**.
+
+**PrivacyFirewall adds a zero-trust privacy shield BEFORE your text ever reaches a third-party AI system.**
+
+### What PrivacyFirewall gives you:
+
+*   ✋ **Human-in-the-loop protection** for accidental leaks
+    
+*   🔒 **100% local processing** (browser + localhost only)
+    
+*   ⚡ **Practical protection** (regex + optional transformer NER)
+    
+*   🧩 **Friendly UX** (warnings, paste-block modals, override options)
+    
+*   🛠 **OSS and auditable** (MV3 + FastAPI + Hugging Face stack)
+    
+
+🧠 **How It Works**
+-------------------
+
+### **Two Layers of Protection**
+
+1.  **Lite Mode (regex-only)**Runs instantly in the extension — no setup needed.
+    
+2.  **AI Mode (optional, local LLM)**Uses a local FastAPI agent + transformer model for deeper detection(People, organizations, locations, contextual entities).
+    
+
+### **High-level architecture**
 ```mermaid
 graph TD
     A[User Pastes/Types Text]:::blueNode -->|Intercept| B(Chrome Extension):::blueNode
@@ -35,46 +69,154 @@ graph TD
     classDef redNode fill:#dc2626,stroke:#b91c1c,color:#fff
 ```
 
-## Quickstart (local)
-### Prerequisites
-- Python 3.10+ (for the engine)
-- Chrome/Chromium or Edge (for MV3 extension)
-- Git
+*   **Regex Mode** covers secrets quickly
+    
+*   **AI Mode** enhances detection when the local engine is running
+    
+*   If the agent goes offline → extension falls back automatically
+    
 
-### 1) Clone
-```bash
-git clone https://github.com/YOUR-USERNAME/local-llm-dlp.git
-cd local-llm-dlp
+🚀 **Quickstart (Local Development)**
+=====================================
+
+**Prerequisites**
+-----------------
+
+*   Python **3.10+**
+    
+*   Chrome/Chromium/Edge
+    
+*   Git
+    
+
+**1) Clone**
+------------
 ```
-> **Note**: Replace `YOUR-USERNAME` with your GitHub username
+$ git clone https://github.com/privacyshield-ai/privacy-firewall.git
 
-### 2) Run the local engine
-```bash
-cd src/engine
-python -m venv .venv
-source .venv/bin/activate          # On Windows: .venv\Scripts\activate
-pip install --upgrade pip
-pip install -r requirements.txt
-uvicorn main:app --host 127.0.0.1 --port 8765
+$ cd privacy-firewall
+
 ```
-- First run will download `dslim/bert-base-NER` (~few hundred MB) to `~/.cache/huggingface`.
-- You should see `/health` at http://127.0.0.1:8765/health return `{"status": "ok"}`.
 
-### 3) Load the Chrome extension
-1. Open `chrome://extensions` (or Edge equivalent) and toggle **Developer mode**.
-2. Click **Load unpacked** and select the `src/extension` folder.
-3. Pin the extension if you want quick access. The popup is currently a placeholder; the logic lives in the content script.
 
-### 4) Try it
-- Visit `chat.openai.com`, `claude.ai`,  or `gemini.google.com`.
-- Paste text containing an email, phone number, MAC address, AWS key, or JWT. You should see the firewall modal; choose **Keep Safe** or **Paste Anyway**.
-- While typing sensitive patterns, a top-of-page warning banner will appear.
+**2) Run the Local Engine (optional for AI Mode)**
+--------------------------------------------------
 
-## Detection coverage
-- **Regex (instant, offline)**: email, phone number, MAC address, AWS access key, private key header, IP address, credit card number, US SSN, generic API key/hash, JWT.
-- **Transformer NER (local AI)**: person names, organizations, locations via `dslim/bert-base-NER` with confidence filtering. Extensible to more models.
+```
+$ cd src/engine  python -m venv .venv  
 
-## Project layout
+$ source .venv/bin/activate       # Windows: .venv\Scripts\activate  pip install --upgrade 
+
+$ pip  pip install -r requirements.txt  uvicorn main:app --host 127.0.0.1 --port 8765   
+
+```
+*   First run downloads dslim/bert-base-NER (~400MB) to ~/.cache/huggingface.
+    
+*   [http://127.0.0.1:8765/health](http://127.0.0.1:8765/health) → {"status":"ok"}
+    
+
+**3) Install the Chrome Extension**
+-----------------------------------
+
+1.  Visit: chrome://extensions
+    
+2.  Enable **Developer mode**
+    
+3.  Click **Load unpacked**
+    
+4.  Select: src/extension/
+    
+
+You now have **Lite Mode** running with regex-based detection.
+
+**4) Try It Out**
+-----------------
+
+Go to:
+
+*   https://chat.openai.com
+    
+*   https://claude.ai
+    
+*   https://gemini.google.com
+    
+
+Paste:
+
+```
+My email is john.doe@example.com   `
+
+```
+
+→ Paste is intercepted, modal appears.
+
+Paste:
+
+```
+AKIAIOSFODNN7EXAMPLE
+
+```
+→ Detected as AWS key → blocked.
+
+Enable AI Mode (when popup UI is ready), type:
+
+```
+ Meeting notes from Sarah Thompson at HR...   
+
+```
+
+→ Local transformer flags PERSON → warns you.
+
+🔍 **Detection Coverage**
+=========================
+
+### **Regex Mode (Fast, Offline, Default)**
+
+*   Email address
+    
+*   Phone number
+    
+*   Credit card candidate
+    
+*   MAC address
+    
+*   IPv4 address
+    
+*   AWS access keys
+    
+*   JWT tokens
+    
+*   Private key blocks
+    
+*   Generic API key / hash patterns
+    
+*   US SSN (basic pattern)
+    
+
+### **AI Mode (Local Transformer)**
+
+Powered by dslim/bert-base-NER:
+
+*   PERSON
+    
+*   ORGANIZATION
+    
+*   LOCATION
+    
+*   Additional named entities
+    
+*   Helpful for ambiguous or context-based leakage
+    
+
+📁 **Project Layout**
+=====================
+
+
+🧪 **Development**
+==================
+
+### **Run Detection Tests**
+
 ```
 src/extension/        Chrome MV3 extension (content script, background worker, UI assets)
 src/engine/           FastAPI service + transformer model wrapper
@@ -82,39 +224,79 @@ src/engine/models/    Model utilities (Hugging Face pipeline)
 src/engine/tests/     Basic test harness for detection
 ```
 
-## Development
+### **Model & Cache Notes**
 
-### Testing
-Run the engine tests to verify detection logic:
-```bash
-cd src/engine
-source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-python -m pytest tests/test_comprehensive.py -v
-```
+*   HuggingFace models live in ~/.cache/huggingface/
+    
+*   Delete this directory to force a fresh download
+    
 
-### Code Quality
-- Linting/formatting: not yet standardized; contributions welcome.
-- Model caching: Hugging Face models are cached in `~/.cache/huggingface/`. Delete this directory if you need a clean slate.
+🛠️ **Future Improvements**
+===========================
 
-## Future ideas
-- Add UI settings (enable/disable regex/AI, site allowlist, logs) in the extension popup.
-- Expand secret patterns (cloud keys, tokens) and add structured redaction.
-- Package the engine as a lightweight binary or container for easier distribution.
-- Add CI, linting, and browser-automation tests for regression coverage.
+*   Extension settings UI (enable/disable regex/AI modes)
+    
+*   Add per-site allow/deny lists
+    
+*   Add secret-type redaction instead of full block
+    
+*   Package engine as a binary or desktop app
+    
+*   ONNX / quantized models for faster inference
+    
+*   Automated CI + browser testing
+    
 
-## Troubleshooting
-- **“The Engine is Offline”**: Ensure the Python window is still open and running; confirm port 8765 is reachable. The extension will automatically fall back to Regex Mode (basic protection) if the engine is down.
-- **“It didn’t block my name”**: Verify the engine is connected (green status in the modal). AI detection is probabilistic (confidence threshold > 0.75), so very short or ambiguous names may pass.
+❗ Troubleshooting
+=================
 
-## Contributing
-Issues and PRs are welcome. Please include reproduction steps for detection misses and note model versions when reporting false positives/negatives.
+### **“Engine Offline” Banner**
 
-## Security and privacy notes
-- The extension talks only to `http://127.0.0.1:8765` for AI scans.
-- No content is sent to third-party services; all inference is local.
-- Review the source and your browser’s network panel to verify behavior.
+*   Ensure the Python engine is running
+    
+*   Confirm nothing else uses port 8765
+    
+*   Lite mode will still block regex-based secrets
+    
 
-## License
-MIT License. See [LICENSE](LICENSE) for details.
+### **“It didn’t flag a name I typed”**
 
-Privacy Note: This software analyzes text on your device. No data is transmitted to the developers or any third party. You can verify this by inspecting the network behavior in `src/extension/content-script.js`.
+*   Ensure AI Mode is enabled + engine is online
+    
+*   NER models are probabilistic; long names work best
+    
+*   Confidence threshold is tunable in transformer\_detector.py
+    
+
+🤝 **Contributing**
+===================
+
+PRs and issues are welcome!Please include:
+
+*   OS & browser version
+    
+*   Reproduction steps
+    
+*   Model version (if reporting AI false positives/negatives)
+    
+
+🔐 **Security & Privacy Notes**
+===============================
+
+*   **No prompts or text ever leave your machine**
+    
+*   Extension communicates **only** with:
+    
+    *   Browser local context
+        
+    *   Optional localhost API at 127.0.0.1:8765
+        
+*   No analytics, telemetry, or external logging
+    
+*   Review src/extension/content-script.js and DevTools → Network tabto verify behavior
+    
+
+📄 **License**
+==============
+
+MIT License.See [LICENSE](LICENSE) for full text.
