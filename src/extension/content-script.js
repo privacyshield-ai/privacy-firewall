@@ -403,7 +403,6 @@ function showFirewallModal(findings, originalText, insertionContext = null) {
   cancelBtn.addEventListener("click", cleanup);
   
   overrideBtn.addEventListener("click", () => {
-    cleanup();
     insertTextAtCursor(originalText, insertionContext);
   });
   
