@@ -1,0 +1,54 @@
+{  
+  "manifest_version": 3,
+  "name": "PrivacyFirewall",
+  "version": "0.1.0",
+  "description": "Prevent pasting secrets and PII into AI tools. 100% local. No data leaves your machine.",
+  
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "storage"
+  ],
+  
+  "host_permissions": [
+    "http://127.0.0.1:8765/*"
+  ],
+  
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*"
+      ],
+      "js": ["content-script.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  
+  "action": {
+    "default_popup": "ui/popup.html",
+    "default_icon": {
+      "16": "icons/pw16.png",
+      "48": "icons/pw48.png",
+      "128": "icons/pw128.png"
+    }
+  },
+  
+  "icons": {
+    "16": "icons/pw16.png",
+    "48": "icons/pw48.png",
+    "128": "icons/pw128.png"
+  },
+  
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
