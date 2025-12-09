@@ -1,6 +1,10 @@
 **PrivacyFirewall (Local AI Privacy Shield / Local LLM DLP)**
 =============================================================
 
+👋 **If you're trying PrivacyFirewall, please star the repo!** 
+> It helps others discover the project and motivates development.
+> Takes 2 seconds → ⭐ (top right)
+
 ![PrivacyFirewall Demo](assets/PrivacyFirewall.gif)
 
 **PrivacyFirewall** is a **local-first PII and secrets firewall** for AI tools like ChatGPT, Claude, and Gemini.It blocks risky paste events, warns as you type, and (optionally) uses a **lightweight on-device Transformer model** for deeper PII detection.
