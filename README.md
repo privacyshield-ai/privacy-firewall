@@ -252,7 +252,7 @@ src/engine/tests/     Basic test harness for detection
     
 *   Package engine as a binary or desktop app
     
-*   ONNX / quantized models for faster inference
+*   Explore transformer.js for in-browser inference.
     
 *   Automated CI + browser testing
     
