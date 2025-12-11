@@ -1,6 +1,9 @@
 **PrivacyFirewall (Local AI Privacy Shield / Local LLM DLP)**
 =============================================================
 
+⭐ **100+ stars in 24 hours** | 🍴 **7 forks** | 🔥 **Trending**
+
+
 👋 **If you're trying PrivacyFirewall, please star the repo!** 
 > It helps others discover the project and motivates development.
 > Takes 2 seconds → ⭐ (top right)
