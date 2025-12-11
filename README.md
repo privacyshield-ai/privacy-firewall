@@ -3,6 +3,8 @@
 
 ⭐ **100+ stars in 24 hours** | 🍴 **7 forks** | 🔥 **Trending**
 
+> "Solves a major security concern" — Security Professional
+> "Very elegant and impressive solution" — LinkedIn User
 
 👋 **If you're trying PrivacyFirewall, please star the repo!** 
 > It helps others discover the project and motivates development.
