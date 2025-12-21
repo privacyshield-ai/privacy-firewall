@@ -1,17 +1,14 @@
 {  
   "manifest_version": 3,
   "name": "PrivacyFirewall",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Prevent pasting secrets and PII into AI tools. 100% local. No data leaves your machine.",
   
   "permissions": [
     "scripting",
     "activeTab",
-    "storage"
-  ],
-  
-  "host_permissions": [
-    "http://127.0.0.1:8765/*"
+    "storage",
+    "offscreen"
   ],
   
   "background": {
@@ -48,7 +45,15 @@
     "128": "icons/pw128.png"
   },
   
+  "web_accessible_resources": [
+    {
+      "resources": ["wasm/*"],
+      "matches": ["<all_urls>"],
+      "extension_ids": []
+    }
+  ],
+  
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   }
 }

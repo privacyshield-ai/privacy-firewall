@@ -1,0 +1,21 @@
+{
+  "name": "extension",
+  "version": "1.0.0",
+  "main": "background.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "node build.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "3.8.1",
+    "esbuild": "0.27.1",
+    "onnxruntime-web": "^1.23.2"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
