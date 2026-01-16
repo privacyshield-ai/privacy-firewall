@@ -22,7 +22,11 @@
         "https://chat.openai.com/*",
         "https://chatgpt.com/*",
         "https://claude.ai/*",
-        "https://gemini.google.com/*"
+        "https://gemini.google.com/*",
+        "https://copilot.microsoft.com/*",
+        "https://poe.com/*",
+        "https://grok.com/*",
+        "https://chat.deepseek.com/*"
       ],
       "js": ["content-script.js"],
       "run_at": "document_idle",
@@ -44,6 +48,8 @@
     "48": "icons/pw48.png",
     "128": "icons/pw128.png"
   },
+  
+  "options_page": "ui/settings.html",
   
   "web_accessible_resources": [
     {

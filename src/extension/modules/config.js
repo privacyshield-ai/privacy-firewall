@@ -15,29 +15,59 @@ export const CONFIG = {
   BANNER_Z_INDEX: 2147483646,
   BANNER_AUTO_HIDE_MS: 8000,
   
-  // Timing settings
-  DEBOUNCE_DELAY_MS: 300,
+  // Timing settings for typing detection
+  LOCAL_SCAN_DEBOUNCE_MS: 300,      // Local regex scan debounce (faster)
+  AI_SCAN_DEBOUNCE_MS: 600,         // AI scan debounce (slower, more expensive)
   
   // Animation settings
   ANIMATION_DURATION_MS: 300,
   
-  // Colors
+  // Colors - Centralized theme colors for modal, banner, and settings
   COLORS: {
+    // Primary brand colors
     PRIMARY: '#4285f4',
     PRIMARY_HOVER: '#1765cc',
     PRIMARY_DARK: '#1a73e8',
     PRIMARY_DARKER: '#1967d2',
     PRIMARY_LIGHT: '#e8f0fe',
+    PRIMARY_FOCUS: 'rgba(66, 133, 244, 0.25)',
+    
+    // Danger/Error colors
     DANGER: '#dc2626',
     DANGER_HOVER: '#ef4444',
     DANGER_LIGHT: '#fef2f2',
     DANGER_BORDER: '#fca5a5',
+    DANGER_BG: '#fce8e6',
+    DANGER_TEXT: '#c5221f',
+    
+    // Success colors
     SUCCESS: '#34a853',
+    SUCCESS_LIGHT: '#e6f4ea',
+    SUCCESS_TEXT: '#1e8e3e',
+    
+    // Warning colors
+    WARNING: '#fbbc04',
+    WARNING_LIGHT: '#fef7e0',
+    WARNING_TEXT: '#b06000',
+    
+    // Critical/Purple colors
+    CRITICAL: '#a142f4',
+    CRITICAL_LIGHT: '#f3e8fd',
+    CRITICAL_TEXT: '#8430ce',
+    
+    // Text colors
     TEXT_PRIMARY: '#202124',
     TEXT_SECONDARY: '#5f6368',
     TEXT_TERTIARY: '#9aa0a6',
+    
+    // Background colors
     BACKGROUND: '#fff',
+    BACKGROUND_SECONDARY: '#f8f9fa',
     HOVER_BG: '#f1f3f4',
+    
+    // Border colors
+    BORDER: '#e8eaed',
+    BORDER_INPUT: '#dadce0',
   },
   
   // Font settings
@@ -53,6 +83,7 @@ export const DOM_IDS = {
   MODAL_OVERRIDE: 'pw-override',
   BANNER: 'privacy-wall-banner',
   BANNER_CLOSE: 'privacy-banner-close',
+  BANNER_UNDO: 'privacy-banner-undo',
 };
 
 /**
@@ -77,6 +108,16 @@ export const PATTERNS = [
     type: "phone_number",
     regex: /(\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/,
     desc: "Phone Number",
+  },
+  {
+    type: "address",
+    regex: /\b\d{1,5}\s+[\w\s]{1,30}(?:street|st|avenue|ave|road|rd|highway|hwy|boulevard|blvd|lane|ln|drive|dr|court|ct|way|place|pl|circle|cir)\b\.?(?:\s*(?:apt|apartment|suite|ste|unit|#)\s*\w+)?\s*,?\s*(?:[\w\s]+,\s*)?(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming)?\s*\d{5}(?:-\d{4})?\b/i,
+    desc: "Physical Address",
+  },
+  {
+    type: "zipcode",
+    regex: /\b\d{5}(?:-\d{4})?\b/,
+    desc: "US Zip Code",
   },
   {
     type: "mac_address",
@@ -127,4 +168,5 @@ export const MESSAGE_TYPES = {
   GET_ENGINE_STATUS: 'GET_ENGINE_STATUS',
   ENGINE_STATUS: 'ENGINE_STATUS',
   SCAN_TEXT: 'SCAN_TEXT',
+  SETTINGS_UPDATED: 'SETTINGS_UPDATED',
 };

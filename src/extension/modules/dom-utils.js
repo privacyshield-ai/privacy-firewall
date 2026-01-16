@@ -5,6 +5,17 @@
 import { Logger } from './utils.js';
 
 /**
+ * Escape HTML special characters to prevent XSS
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped HTML string
+ */
+export function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
  * Gets text content from various types of elements
  * @param {HTMLElement} element - The element to extract text from
  * @returns {string} The extracted text
@@ -37,19 +48,19 @@ export function captureInsertionContext(e) {
       type: "input",
       node: target,
       start: target.selectionStart || 0,
-      end: target.selectionEnd || 0
+      end: target.selectionEnd || 0,
+      previousContent: target.value || ''  // Store content before paste
     };
   }
   
   if (target.isContentEditable) {
     const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      return {
-        type: "contentEditable",
-        node: target,
-        range: selection.getRangeAt(0).cloneRange()
-      };
-    }
+    return {
+      type: "contentEditable",
+      node: target,
+      range: selection?.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null,
+      previousContent: target.innerHTML || ''  // Store content before paste
+    };
   }
   
   return null;
@@ -107,54 +118,83 @@ function insertIntoContentEditable(element, text, range) {
  * @param {Object|null} context - Insertion context from captureInsertionContext
  */
 export function removeTextFromElement(text, context = null) {
-  if (!text || !context) {
-    Logger.warn('Cannot remove text: missing text or context');
+  // If we have previousContent from context, use that for restoration
+  if (context?.previousContent !== undefined) {
+    return restoreFromContext(context);
+  }
+  
+  // Fallback: find element and try to clear/undo
+  let element = document.activeElement;
+  
+  if (!element || element === document.body) {
+    element = document.querySelector('.ql-editor[contenteditable="true"]') ||  // Quill (Gemini)
+              document.querySelector('.ProseMirror[contenteditable="true"]') || // ProseMirror (ChatGPT)
+              document.querySelector('[contenteditable="true"]') ||
+              document.querySelector('textarea:focus, input:focus');
+  }
+  
+  if (!element) {
+    Logger.warn('Cannot remove text: no editable element found');
     return;
   }
+  
+  // Clear the element as last resort
+  if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
+    element.value = '';
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  } else if (element.isContentEditable) {
+    element.innerHTML = '';
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  
+  Logger.info('Cleared element content (no previous content available)');
+}
 
+/**
+ * Restores element content from saved context
+ * @param {Object} context - Context with previousContent
+ */
+function restoreFromContext(context) {
+  // Find the current element - original may be disconnected (React/Angular replace nodes)
+  let element = context.node?.isConnected ? context.node : null;
+  
+  if (!element) {
+    // Find by type - editors often recreate elements
+    if (context.type === 'input') {
+      element = document.activeElement;
+      if (element?.tagName !== 'TEXTAREA' && element?.tagName !== 'INPUT') {
+        element = document.querySelector('textarea, input[type="text"]');
+      }
+    } else {
+      element = document.activeElement;
+      if (!element?.isContentEditable) {
+        element = document.querySelector('.ql-editor[contenteditable="true"]') ||
+                  document.querySelector('.ProseMirror[contenteditable="true"]') ||
+                  document.querySelector('[contenteditable="true"]');
+      }
+    }
+  }
+  
+  if (!element) {
+    Logger.warn('Cannot restore: element not found');
+    return;
+  }
+  
   try {
-    if (context.type === "input" && context.node?.isConnected) {
-      const input = context.node;
-      const currentValue = input.value || "";
-      const start = context.start ?? 0;
-      
-      // Find where the text was inserted and remove it
-      const insertedAt = currentValue.indexOf(text, start);
-      if (insertedAt !== -1) {
-        input.focus();
-        input.value = currentValue.substring(0, insertedAt) + currentValue.substring(insertedAt + text.length);
-        input.selectionStart = insertedAt;
-        input.selectionEnd = insertedAt;
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-        input.dispatchEvent(new Event("change", { bubbles: true }));
-        Logger.info('Removed pasted text from input element');
-      }
-      return;
+    element.focus();
+    
+    if (context.type === 'input') {
+      element.value = context.previousContent;
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    } else {
+      element.innerHTML = context.previousContent;
+      element.dispatchEvent(new Event('input', { bubbles: true }));
     }
-
-    if (context.type === "contentEditable" && context.node?.isConnected) {
-      const element = context.node;
-      element.focus();
-      
-      // Get current content and remove the pasted text
-      const currentContent = element.textContent || element.innerText || "";
-      const insertedAt = currentContent.indexOf(text);
-      
-      if (insertedAt !== -1) {
-        // Use Selection API to select and delete the text
-        const textContent = element.textContent;
-        const before = textContent.substring(0, insertedAt);
-        const after = textContent.substring(insertedAt + text.length);
-        
-        // Clear and reset content (works for most contentEditable)
-        element.textContent = before + after;
-        element.dispatchEvent(new Event("input", { bubbles: true }));
-        Logger.info('Removed pasted text from contentEditable element');
-      }
-      return;
-    }
+    
+    Logger.info('Restored previous content successfully');
   } catch (error) {
-    Logger.error('Failed to remove text:', error);
+    Logger.error('Failed to restore content:', error);
   }
 }
 

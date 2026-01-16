@@ -4,18 +4,36 @@
 
 import { DOM_IDS, ICONS, CONFIG } from '../config.js';
 import { getModalStyles } from './styles.js';
-import { insertTextAtCursor, removeTextFromElement } from '../dom-utils.js';
+import { getTypeIcon } from './icons.js';
+import { insertTextAtCursor, removeTextFromElement, escapeHtml } from '../dom-utils.js';
 import { Logger } from '../utils.js';
 
 /**
  * Firewall Modal for displaying sensitive data warnings
  */
 export class FirewallModal {
-  constructor(engineStatus) {
+  constructor(engineStatus, settings = null) {
     this.engineStatus = engineStatus;
+    this.settings = settings;
     this.host = null;
     this.shadow = null;
     this.keyDownHandler = null;
+  }
+
+  /**
+   * Update settings
+   * @param {Object} settings - New settings object
+   */
+  updateSettings(settings) {
+    this.settings = settings;
+  }
+
+  /**
+   * Check if a modal is currently visible
+   * @returns {boolean}
+   */
+  static isVisible() {
+    return !!document.getElementById(DOM_IDS.MODAL_HOST);
   }
 
   /**
@@ -55,6 +73,75 @@ export class FirewallModal {
   }
 
   /**
+   * Creates highlighted text with sensitive data marked
+   * @param {string} text - Original text
+   * @param {Array} findings - Detection findings
+   * @returns {string} HTML with highlights
+   */
+  createHighlightedText(text, findings) {
+    // Collect all match positions
+    const highlights = [];
+    
+    for (const finding of findings) {
+      if (finding.value && finding.value.length > 0) {
+        // If finding has start/end positions from AI, use them
+        if (typeof finding.start === 'number' && typeof finding.end === 'number') {
+          highlights.push({
+            start: finding.start,
+            end: finding.end,
+            value: finding.value
+          });
+        } else {
+          // Fall back to string matching (case-insensitive)
+          const lowerText = text.toLowerCase();
+          const lowerValue = finding.value.toLowerCase();
+          let pos = 0;
+          while ((pos = lowerText.indexOf(lowerValue, pos)) !== -1) {
+            highlights.push({
+              start: pos,
+              end: pos + finding.value.length,
+              value: text.substring(pos, pos + finding.value.length) // Use original case
+            });
+            pos += finding.value.length;
+          }
+        }
+      }
+    }
+    
+    // Sort by start position and merge overlapping
+    highlights.sort((a, b) => a.start - b.start);
+    const merged = [];
+    for (const h of highlights) {
+      if (merged.length === 0 || h.start > merged[merged.length - 1].end) {
+        merged.push({ ...h });
+      } else {
+        merged[merged.length - 1].end = Math.max(merged[merged.length - 1].end, h.end);
+      }
+    }
+    
+    // Build HTML with highlights
+    let result = '';
+    let lastEnd = 0;
+    
+    for (const h of merged) {
+      // Add non-highlighted text before this match
+      if (h.start > lastEnd) {
+        result += escapeHtml(text.substring(lastEnd, h.start));
+      }
+      // Add highlighted match
+      result += `<span class="highlight">${escapeHtml(text.substring(h.start, h.end))}</span>`;
+      lastEnd = h.end;
+    }
+
+    // Add remaining text
+    if (lastEnd < text.length) {
+      result += escapeHtml(text.substring(lastEnd));
+    }
+
+    return result || escapeHtml(text);
+  }
+
+  /**
    * Creates the modal HTML structure
    * @param {Array} findings - Detection findings
    * @param {string} originalText - Original text
@@ -62,8 +149,16 @@ export class FirewallModal {
    * @returns {HTMLElement} Modal overlay element
    */
   createModalStructure(findings, originalText, insertionContext) {
-    const findingsHtml = this.buildFindingsHTML(findings);
+    const detectedHtml = this.buildDetectedHTML(findings);
+    const highlightedText = this.createHighlightedText(originalText, findings);
     const statusMessage = this.engineStatus.getStatusMessage();
+    
+    // Truncate display if text is very long
+    const maxDisplayLength = 300;
+    const truncated = originalText.length > maxDisplayLength;
+    const displayText = truncated 
+      ? this.createHighlightedText(originalText.substring(0, maxDisplayLength) + '...', findings)
+      : highlightedText;
 
     const modalOverlay = document.createElement("div");
     modalOverlay.className = "modal-overlay";
@@ -71,14 +166,25 @@ export class FirewallModal {
       <div class="modal-content">
         <h2 class="modal-header">
           <span class="modal-icon">🛡️</span> 
-          DATA LEAK BLOCKED
+          Data Leak Blocked
         </h2>
         <p class="modal-text">
-          PrivacyWall prevented this paste because it contains sensitive data.
+          PrivacyWall prevented this paste because it contains sensitive information.
         </p>
-        <div class="findings-list">
-          ${findingsHtml}
+        
+        <div class="pasted-text-box">
+          <div class="pasted-text-label">Your Pasted Text</div>
+          <div class="pasted-text-content">${displayText}</div>
+          ${truncated ? '<div class="pasted-text-hint">📝 Text truncated for display</div>' : ''}
         </div>
+        
+        <div class="detected-section">
+          <div class="detected-label">Detected Sensitive Data</div>
+          <ul class="detected-list">
+            ${detectedHtml}
+          </ul>
+        </div>
+        
         <div class="button-container">
           <button id="${DOM_IDS.MODAL_CANCEL}" class="btn btn-cancel">
             ${ICONS.shield}
@@ -89,6 +195,7 @@ export class FirewallModal {
             <span>Paste Anyway</span>
           </button>
         </div>
+        
         <div class="status-bar">
           ${statusMessage}
         </div>
@@ -99,18 +206,25 @@ export class FirewallModal {
   }
 
   /**
-   * Builds HTML for findings list
+   * Builds HTML for detected items list with icons and values
    * @param {Array} findings - Detection findings
    * @returns {string} HTML string
    */
-  buildFindingsHTML(findings) {
+  buildDetectedHTML(findings) {
     return findings
-      .map(
-        (f) =>
-          `<div class="finding-item">
-            <strong class="finding-type">${f.description || f.type.toUpperCase()}</strong> detected
-          </div>`
-      )
+      .map((f) => {
+        const icon = getTypeIcon(f.type);
+        const typeName = f.description || f.type;
+        const value = f.value && f.value !== 'REDACTED' ? escapeHtml(f.value) : 'redacted';
+        
+        return `
+          <li class="detected-item">
+            <span class="detected-icon">${icon}</span>
+            <span class="detected-type">${typeName}:</span>
+            <span class="detected-value">${value}</span>
+          </li>
+        `;
+      })
       .join("");
   }
 
@@ -126,14 +240,17 @@ export class FirewallModal {
     const cancelBtn = this.shadow.getElementById(DOM_IDS.MODAL_CANCEL);
     const overrideBtn = this.shadow.getElementById(DOM_IDS.MODAL_OVERRIDE);
 
+    // Shared cancel/escape logic
+    const handleCancel = () => {
+      // If paste already happened (AI scan case), we need to remove it
+      if (pasteAlreadyInserted) {
+        removeTextFromElement(originalText, insertionContext);
+      }
+      this.close();
+    };
+
     if (cancelBtn) {
-      cancelBtn.addEventListener("click", () => {
-        // If paste already happened (AI scan case), we need to remove it
-        if (pasteAlreadyInserted) {
-          removeTextFromElement(originalText, insertionContext);
-        }
-        this.close();
-      });
+      cancelBtn.addEventListener("click", handleCancel);
     }
 
     if (overrideBtn) {
@@ -147,10 +264,10 @@ export class FirewallModal {
       });
     }
 
-    // ESC key to cancel
+    // ESC key to cancel - same behavior as cancel button
     this.keyDownHandler = (e) => {
       if (e.key === "Escape") {
-        this.close();
+        handleCancel();
       }
     };
     document.addEventListener("keydown", this.keyDownHandler);

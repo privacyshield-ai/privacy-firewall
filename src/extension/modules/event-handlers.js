@@ -9,13 +9,35 @@ import { FirewallModal } from './ui/modal.js';
 import { TypingWarningBanner } from './ui/banner.js';
 
 /**
+ * Check if extension context is still valid
+ * @returns {boolean} True if context is valid
+ */
+function isExtensionContextValid() {
+  try {
+    // This will throw if context is invalidated
+    return !!chrome.runtime?.id;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Handles paste events and scanning
  */
 export class PasteHandler {
-  constructor(scanner, modal) {
+  constructor(scanner, modal, settings = null) {
     this.scanner = scanner;
     this.modal = modal;
+    this.settings = settings;
     this.handler = null;
+  }
+
+  /**
+   * Update settings
+   * @param {Object} settings - New settings object
+   */
+  updateSettings(settings) {
+    this.settings = settings;
   }
 
   /**
@@ -32,54 +54,88 @@ export class PasteHandler {
    * @param {ClipboardEvent} e - Paste event
    */
   async handlePaste(e) {
-    Logger.info("🎯 PASTE EVENT DETECTED!");
+    // Check if extension context is still valid
+    if (!isExtensionContextValid()) {
+      // Silently fail - extension was reloaded
+      return;
+    }
+    
+    Logger.info("Paste event detected");
     
     try {
       // Get pasted text from clipboard
       const pastedText = (e.clipboardData || window.clipboardData)?.getData("text");
-      Logger.info("📋 Pasted text length:", pastedText?.length || 0);
       
       // Validate input
       if (!pastedText || typeof pastedText !== "string" || pastedText.trim() === "") {
-        Logger.info("❌ No text or invalid input");
         return;
       }
 
-      // STEP 1: Instant local regex scan (synchronous, no network)
-      const localFindings = this.scanner.scanLocally(pastedText);
-      const insertionContext = captureInsertionContext(e);
-      Logger.info("🔍 Local scan findings:", localFindings.length);
+      Logger.info("Pasted text length:", pastedText.length);
 
-      // If regex detects sensitive data, block immediately
-      if (localFindings.length > 0) {
-        e.preventDefault();
-        e.stopPropagation();
-        this.modal.show(localFindings, pastedText, insertionContext);
-        return;
-      }
-
-      // STEP 2: Optional AI scan in background (async, non-blocking)
-      // Note: We allow the paste to proceed, but scan in background for additional detection
-      // This provides a better user experience while still catching AI-detected patterns
-      Logger.info("🤖 AI Engine status:", this.scanner.engineStatus.isReachable ? 'READY' : 'OFFLINE');
+      // Always prevent paste first - we'll re-insert if clean
+      e.preventDefault();
+      e.stopPropagation();
       
+      const insertionContext = captureInsertionContext(e);
+
+      // STEP 1: Instant local regex scan (synchronous)
+      const localFindings = this.scanner.scanLocally(pastedText);
+      Logger.info("Regex findings:", localFindings.length);
+
+      // STEP 2: AI scan (async) - run in parallel if AI is available
+      let aiFindings = [];
       if (this.scanner.engineStatus.isReachable) {
-        Logger.info("🤖 Starting AI scan...");
-        this.scanner.scanWithAI(pastedText)
-          .then((aiFindings) => {
-            Logger.info("🤖 AI scan complete, findings:", aiFindings?.length || 0);
-            if (aiFindings && aiFindings.length > 0) {
-              // AI detected something after paste - show warning
-              // Pass true for pasteAlreadyInserted so "Keep Safe" will remove the text
-              Logger.warn("⚠️ AI detected sensitive data in pasted content:", aiFindings);
-              this.modal.show(aiFindings, pastedText, insertionContext, true);
-            }
-          })
-          .catch((err) => {
-            Logger.error("AI scan error:", err);
-          });
-      } else {
-        Logger.info("🤖 AI scan skipped - engine not ready");
+        try {
+          Logger.info("Running AI scan...");
+          aiFindings = await this.scanner.scanWithAI(pastedText);
+          Logger.info("AI findings:", aiFindings.length);
+        } catch (err) {
+          Logger.error("AI scan error:", err);
+        }
+      }
+
+      // STEP 3: Combine all findings
+      const allFindings = [...localFindings, ...aiFindings];
+      
+      // Deduplicate by type (keep first occurrence)
+      const seenTypes = new Set();
+      const uniqueFindings = allFindings.filter(f => {
+        const key = f.ruleId || f.type;
+        if (seenTypes.has(key)) return false;
+        seenTypes.add(key);
+        return true;
+      });
+
+      const blockingFindings = uniqueFindings.filter(f => f.shouldBlock);
+      const warningFindings = uniqueFindings.filter(f => !f.shouldBlock);
+
+      Logger.info("Combined findings - blocking:", blockingFindings.length, "warning:", warningFindings.length);
+
+      // If we have blocking findings, show modal
+      if (blockingFindings.length > 0) {
+        this.modal.show(blockingFindings, pastedText, insertionContext);
+        return;
+      }
+      
+      // If we have warning-only findings, show banner but allow paste
+      if (warningFindings.length > 0) {
+        Logger.info("Warning findings (non-blocking):", warningFindings.length);
+        // Re-insert the text since we blocked it
+        if (insertionContext.target) {
+          insertionContext.target.focus();
+          document.execCommand('insertText', false, pastedText);
+        }
+        const banner = new TypingWarningBanner(warningFindings, pastedText, insertionContext);
+        banner.show();
+        return;
+      }
+
+      // No findings - allow paste by re-inserting
+      Logger.info("No sensitive data found, allowing paste");
+      if (insertionContext.target) {
+        insertionContext.target.focus();
+        document.execCommand('insertText', false, pastedText);
       }
     } catch (error) {
       Logger.error('Error in paste handler:', error);
@@ -102,30 +158,55 @@ export class PasteHandler {
  * Handles input events for typing detection
  */
 export class InputHandler {
-  constructor(scanner) {
+  constructor(scanner, settings = null) {
     this.scanner = scanner;
+    this.settings = settings;
     this.handler = null;
+  }
+
+  /**
+   * Update settings
+   * @param {Object} settings - New settings object
+   */
+  updateSettings(settings) {
+    this.settings = settings;
   }
 
   /**
    * Initializes the input event listener
    */
   initialize() {
-    const debouncedHandler = debounce(
-      (e) => this.handleInput(e),
-      CONFIG.DEBOUNCE_DELAY_MS
+    // Separate debounced handlers for local (fast) and AI (slower) scans
+    this.debouncedLocalScan = debounce(
+      (e) => this.handleLocalScan(e),
+      CONFIG.LOCAL_SCAN_DEBOUNCE_MS || 300
     );
     
-    this.handler = debouncedHandler;
+    this.debouncedAIScan = debounce(
+      (e) => this.handleAIScan(e),
+      CONFIG.AI_SCAN_DEBOUNCE_MS || 600
+    );
+    
+    this.handler = (e) => {
+      this.debouncedLocalScan(e);
+      this.debouncedAIScan(e);
+    };
+    
     document.addEventListener('input', this.handler, true);
     Logger.info('Input handler initialized');
   }
 
   /**
-   * Handles input events after debounce
+   * Handles local regex scan (faster, 300ms debounce)
    * @param {InputEvent} e - Input event
    */
-  async handleInput(e) {
+  handleLocalScan(e) {
+    // Check if extension context is still valid
+    if (!isExtensionContextValid()) {
+      this.cleanup();
+      return;
+    }
+    
     try {
       const target = e.target;
       const text = getTextFromElement(target);
@@ -134,19 +215,57 @@ export class InputHandler {
         return;
       }
       
-      Logger.info("⌨️ INPUT SCAN - Text length:", text.length);
-      
       // Scan locally
       const localFindings = this.scanner.scanLocally(text);
       
       if (localFindings.length > 0) {
-        Logger.warn("🚨 Sensitive data detected while typing!");
-        // Show warning (non-blocking, just notification)
+        Logger.warn("Sensitive data detected while typing (regex)");
         const banner = new TypingWarningBanner(localFindings);
         banner.show();
       }
     } catch (error) {
-      Logger.error('Error in input handler:', error);
+      if (error.message?.includes('Extension context invalidated')) {
+        this.cleanup();
+        return;
+      }
+      Logger.error('Error in local scan handler:', error);
+    }
+  }
+
+  /**
+   * Handles AI scan (slower, 600ms debounce)
+   * @param {InputEvent} e - Input event
+   */
+  async handleAIScan(e) {
+    // Check if extension context is still valid
+    if (!isExtensionContextValid()) {
+      this.cleanup();
+      return;
+    }
+    
+    try {
+      const target = e.target;
+      const text = getTextFromElement(target);
+      
+      if (!text || text.trim() === '') {
+        return;
+      }
+      
+      // Only scan with AI if available
+      if (this.scanner.engineStatus.isReachable) {
+        const aiFindings = await this.scanner.scanWithAI(text);
+        if (aiFindings && aiFindings.length > 0) {
+          Logger.warn("Sensitive data detected while typing (AI)");
+          const banner = new TypingWarningBanner(aiFindings);
+          banner.show();
+        }
+      }
+    } catch (error) {
+      if (error.message?.includes('Extension context invalidated')) {
+        this.cleanup();
+        return;
+      }
+      Logger.error('Error in AI scan handler:', error);
     }
   }
 
@@ -157,6 +276,8 @@ export class InputHandler {
     if (this.handler) {
       document.removeEventListener('input', this.handler, true);
       this.handler = null;
+      this.debouncedLocalScan = null;
+      this.debouncedAIScan = null;
       Logger.info('Input handler cleaned up');
     }
   }

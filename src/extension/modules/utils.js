@@ -3,6 +3,25 @@
 // ============================================================================
 
 /**
+ * Stringify objects for logging (handles arrays of objects)
+ */
+function stringify(arg) {
+  if (arg === null || arg === undefined) return String(arg);
+  if (typeof arg === 'object') {
+    try {
+      // For arrays of findings, show summary
+      if (Array.isArray(arg) && arg.length > 0 && arg[0].type) {
+        return arg.map(f => `{${f.type}: "${f.value || 'detected'}"}`).join(', ');
+      }
+      return JSON.stringify(arg);
+    } catch {
+      return String(arg);
+    }
+  }
+  return arg;
+}
+
+/**
  * Logger utility for consistent logging with prefixes
  */
 export const Logger = {
@@ -12,7 +31,7 @@ export const Logger = {
    * @param {...any} args - Additional arguments
    */
   info: (msg, ...args) => {
-    console.log(`[PrivacyWall] ${msg}`, ...args);
+    console.log(`[PrivacyWall] ${msg}`, ...args.map(stringify));
   },
 
   /**
@@ -21,7 +40,7 @@ export const Logger = {
    * @param {...any} args - Additional arguments
    */
   warn: (msg, ...args) => {
-    console.warn(`[PrivacyWall] ${msg}`, ...args);
+    console.warn(`[PrivacyWall] ${msg}`, ...args.map(stringify));
   },
 
   /**
@@ -30,7 +49,7 @@ export const Logger = {
    * @param {...any} args - Additional arguments
    */
   error: (msg, ...args) => {
-    console.error(`[PrivacyWall] ${msg}`, ...args);
+    console.error(`[PrivacyWall] ${msg}`, ...args.map(stringify));
   },
 };
 

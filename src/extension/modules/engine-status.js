@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { Logger } from './utils.js';
-import { initializeModel } from '../lib/tranformer-detector.js';
+import { initializeModel } from '../lib/transformer-detector.js';
 
 /**
  * Manages AI model loading status

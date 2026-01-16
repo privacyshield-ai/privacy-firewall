@@ -69,6 +69,16 @@ function copyStaticFiles() {
   fs.copyFileSync('ui/popup.css', path.join(DIST_DIR, 'ui/popup.css'));
   console.log('✓ Copied popup.html and popup.css');
 
+  // Copy settings HTML and CSS (if exists)
+  if (fs.existsSync('ui/settings.html')) {
+    fs.copyFileSync('ui/settings.html', path.join(DIST_DIR, 'ui/settings.html'));
+    console.log('✓ Copied settings.html');
+  }
+  if (fs.existsSync('ui/settings.css')) {
+    fs.copyFileSync('ui/settings.css', path.join(DIST_DIR, 'ui/settings.css'));
+    console.log('✓ Copied settings.css');
+  }
+
   // Copy icons
   const iconsDir = 'icons';
   if (fs.existsSync(iconsDir)) {
@@ -137,6 +147,21 @@ async function build() {
       sourcemap: true,
     });
     console.log('✓ Built popup.js');
+
+    // Build settings script (if exists)
+    if (fs.existsSync('ui/settings.js')) {
+      await esbuild.build({
+        entryPoints: ['ui/settings.js'],
+        bundle: true,
+        outfile: path.join(DIST_DIR, 'ui/settings.js'),
+        format: 'iife',
+        platform: 'browser',
+        target: 'chrome120',
+        minify: false,
+        sourcemap: true,
+      });
+      console.log('✓ Built settings.js');
+    }
 
     // Copy static files
     copyStaticFiles();

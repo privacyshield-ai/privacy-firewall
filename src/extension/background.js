@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { PATTERNS, MESSAGE_TYPES } from './modules/config.js';
+import { isSetupComplete, markSetupComplete } from './modules/settings.js';
 
 // Engine status tracking
 let isModelReady = false;
@@ -66,6 +67,24 @@ async function setupOffscreenDocument() {
 // INITIALIZATION
 // ============================================================================
 
+// Handle extension install/update
+chrome.runtime.onInstalled.addListener(async (details) => {
+  console.log('[PrivacyWall] Extension installed/updated:', details.reason);
+  
+  if (details.reason === 'install') {
+    // First time install - open settings page
+    console.log('[PrivacyWall] First install - opening settings page');
+    chrome.tabs.create({ url: 'ui/settings.html' });
+  } else if (details.reason === 'update') {
+    // Extension updated - check if setup was complete
+    const setupDone = await isSetupComplete();
+    if (!setupDone) {
+      console.log('[PrivacyWall] Setup not complete - opening settings page');
+      chrome.tabs.create({ url: 'ui/settings.html' });
+    }
+  }
+});
+
 // Setup offscreen document on startup
 setupOffscreenDocument().catch(err => {
   console.error('[PrivacyWall] Failed to setup offscreen document:', err);
@@ -99,13 +118,33 @@ function scanLocally(text) {
 // ============================================================================
 
 async function scanWithAI(text) {
-  if (!isModelReady || !text) {
-    console.log('[PrivacyWall] AI scan skipped - model not ready or no text');
+  if (!text) {
+    console.log('[PrivacyWall] AI scan skipped - no text');
     return [];
   }
   
   try {
     await setupOffscreenDocument();
+    
+    // Get fresh status from offscreen before scanning
+    if (!isModelReady) {
+      console.log('[PrivacyWall] Checking model status before scan...');
+      try {
+        const statusResponse = await chrome.runtime.sendMessage({ type: 'GET_OFFSCREEN_STATUS' });
+        if (statusResponse) {
+          isModelReady = statusResponse.isReady;
+          isModelLoading = statusResponse.isLoading;
+          console.log('[PrivacyWall] Updated model status - Ready:', isModelReady);
+        }
+      } catch (e) {
+        console.log('[PrivacyWall] Could not get status:', e);
+      }
+    }
+    
+    if (!isModelReady) {
+      console.log('[PrivacyWall] AI scan skipped - model not ready');
+      return [];
+    }
     
     console.log('[PrivacyWall] Sending SCAN_WITH_AI request to offscreen...');
     

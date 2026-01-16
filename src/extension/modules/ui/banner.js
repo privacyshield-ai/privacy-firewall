@@ -3,40 +3,66 @@
 // ============================================================================
 
 import { DOM_IDS, CONFIG } from '../config.js';
-import { getBannerStyles, getBannerCloseButtonStyles } from './styles.js';
+import { getBannerStyles, getBannerInnerStyles } from './styles.js';
+import { getTypeIcon } from './icons.js';
+import { removeTextFromElement, escapeHtml } from '../dom-utils.js';
 import { Logger } from '../utils.js';
+import { FirewallModal } from './modal.js';
 
 /**
  * Warning banner for typing detection
  */
 export class TypingWarningBanner {
-  constructor(findings) {
+  constructor(findings, originalText = '', insertionContext = null) {
     this.findings = findings;
-    this.banner = null;
+    this.originalText = originalText;
+    this.insertionContext = insertionContext;
+    this.host = null;
+    this.shadow = null;
     this.autoHideTimeout = null;
+    this.onUndo = null;
   }
 
   /**
    * Shows the warning banner
+   * @param {Function} onUndoCallback - Optional callback when Undo is clicked
    */
-  show() {
+  show(onUndoCallback = null) {
     try {
+      // Don't show banner if a modal is currently visible
+      if (FirewallModal.isVisible()) {
+        Logger.info('Skipping banner - modal is visible');
+        return;
+      }
+      
+      this.onUndo = onUndoCallback;
+      
       // Remove existing banner if any
       TypingWarningBanner.removeExisting();
 
-      // Create banner element
-      this.banner = document.createElement('div');
-      this.banner.id = DOM_IDS.BANNER;
+      // Create host element for Shadow DOM (isolates from page CSS)
+      this.host = document.createElement('div');
+      this.host.id = DOM_IDS.BANNER;
       
-      // Apply styles
-      Object.assign(this.banner.style, getBannerStyles());
-
-      // Set content
-      const findingsText = this.findings.map(f => f.description).join(', ');
-      this.banner.innerHTML = this.createBannerHTML(findingsText);
+      // Apply outer styles to host
+      Object.assign(this.host.style, getBannerStyles());
+      
+      // Attach Shadow DOM
+      this.shadow = this.host.attachShadow({ mode: 'open' });
+      
+      // Inject inner styles
+      const style = document.createElement('style');
+      style.textContent = getBannerInnerStyles();
+      this.shadow.appendChild(style);
+      
+      // Create content wrapper
+      const content = document.createElement('div');
+      content.style.cssText = 'display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 16px;';
+      content.innerHTML = this.createBannerHTML();
+      this.shadow.appendChild(content);
 
       // Append to body
-      document.body.appendChild(this.banner);
+      document.body.appendChild(this.host);
 
       // Attach event handlers
       this.attachEventHandlers();
@@ -49,20 +75,30 @@ export class TypingWarningBanner {
   }
 
   /**
-   * Creates the banner HTML structure
-   * @param {string} findingsText - Comma-separated list of findings
+   * Creates the banner HTML structure with inline detected items
    * @returns {string} HTML string
    */
-  createBannerHTML(findingsText) {
+  createBannerHTML() {
+    // Build inline findings with icons and values
+    const inlineItems = this.findings.map(f => {
+      const icon = getTypeIcon(f.type);
+      const typeName = f.description || f.type;
+      const value = f.value && f.value !== 'REDACTED' ? escapeHtml(f.value) : 'redacted';
+      return `<span class="banner-item">${icon} ${typeName}: ${value}</span>`;
+    }).join('');
+    
+    const hasUndoContext = this.originalText && this.insertionContext;
+
     return `
-      <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
-        <span style="font-size: 24px;">🛡️</span>
-        <div>
-          <strong style="font-size: 15px; color: ${CONFIG.COLORS.PRIMARY_DARK};">Sensitive Data Detected While Typing</strong><br>
-          <small style="opacity: 0.7; color: ${CONFIG.COLORS.TEXT_SECONDARY};">${findingsText}</small>
-        </div>
+      <div class="banner-content">
+        <span class="banner-shield">🛡️</span>
+        <span class="banner-label">PrivacyWall detected:</span>
+        <span class="banner-items">${inlineItems}</span>
       </div>
-      <button id="${DOM_IDS.BANNER_CLOSE}" title="Close">✕</button>
+      <div class="banner-actions">
+        ${hasUndoContext ? `<button id="${DOM_IDS.BANNER_UNDO}" class="banner-btn banner-undo">Undo</button>` : ''}
+        <button id="${DOM_IDS.BANNER_CLOSE}" class="banner-btn banner-close" title="Close">✕</button>
+      </div>
     `;
   }
 
@@ -70,34 +106,39 @@ export class TypingWarningBanner {
    * Attaches event handlers to banner elements
    */
   attachEventHandlers() {
-    if (!this.banner) return;
+    if (!this.shadow) return;
 
-    const closeBtn = this.banner.querySelector(`#${DOM_IDS.BANNER_CLOSE}`);
-    if (!closeBtn) return;
+    const closeBtn = this.shadow.getElementById(DOM_IDS.BANNER_CLOSE);
+    const undoBtn = this.shadow.getElementById(DOM_IDS.BANNER_UNDO);
 
-    // Apply close button styles
-    Object.assign(closeBtn.style, getBannerCloseButtonStyles());
-
-    // Hover effects
-    closeBtn.addEventListener('mouseenter', () => {
-      closeBtn.style.background = CONFIG.COLORS.HOVER_BG;
-    });
-
-    closeBtn.addEventListener('mouseleave', () => {
-      closeBtn.style.background = 'transparent';
-    });
-
-    // Click to close
-    closeBtn.addEventListener('click', () => {
-      this.hide();
-    });
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        this.hide();
+      });
+    }
+    
+    if (undoBtn) {
+      undoBtn.addEventListener('click', () => {
+        // Remove the detected text
+        if (this.originalText && this.insertionContext) {
+          removeTextFromElement(this.originalText, this.insertionContext);
+        }
+        
+        // Call undo callback if provided
+        if (this.onUndo) {
+          this.onUndo();
+        }
+        
+        this.hide();
+      });
+    }
   }
 
   /**
    * Hides the banner with animation
    */
   hide() {
-    if (!this.banner || !this.banner.parentElement) return;
+    if (!this.host || !this.host.parentElement) return;
 
     // Clear auto-hide timeout
     if (this.autoHideTimeout) {
@@ -106,15 +147,16 @@ export class TypingWarningBanner {
     }
 
     // Animate out
-    this.banner.style.transition = `transform ${CONFIG.ANIMATION_DURATION_MS}ms ease-out, opacity ${CONFIG.ANIMATION_DURATION_MS}ms`;
-    this.banner.style.transform = 'translateY(-100%)';
-    this.banner.style.opacity = '0';
+    this.host.style.transition = `transform ${CONFIG.ANIMATION_DURATION_MS}ms ease-out, opacity ${CONFIG.ANIMATION_DURATION_MS}ms`;
+    this.host.style.transform = 'translateY(-100%)';
+    this.host.style.opacity = '0';
 
     // Remove after animation
     setTimeout(() => {
-      if (this.banner && this.banner.parentElement) {
-        this.banner.remove();
-        this.banner = null;
+      if (this.host && this.host.parentElement) {
+        this.host.remove();
+        this.host = null;
+        this.shadow = null;
       }
     }, CONFIG.ANIMATION_DURATION_MS);
   }

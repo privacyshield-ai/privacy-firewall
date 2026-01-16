@@ -4,7 +4,7 @@
 // This runs in an offscreen document which has full Web API access (XMLHttpRequest, etc.)
 // Required because Service Workers don't support WASM with XMLHttpRequest
 
-import { initializeModel, detectEntities } from './lib/tranformer-detector.js';
+import { initializeModel, detectEntities } from './lib/transformer-detector.js';
 
 let isModelReady = false;
 let isModelLoading = false;
