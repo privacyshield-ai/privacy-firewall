@@ -1,317 +1,354 @@
-**PrivacyFirewall (Local AI Privacy Shield / Local LLM DLP)**
-=============================================================
+<p align="center">
+  <img src="assets/pw128.png" alt="PrivacyFirewall Logo" width="100">
+</p>
 
-⭐ **100+ stars in 24 hours** | 🍴 **7 forks** | 🔥 **Trending**
-
-> "Solves a major security concern" — Security Professional
-> "Very elegant and impressive solution" — LinkedIn User
+<h1 align="center">PrivacyFirewall</h1>
 
 👋 **If you're trying PrivacyFirewall, please star the repo!** 
 > It helps others discover the project and motivates development.
 > Takes 2 seconds → ⭐ (top right)
 
-![PrivacyFirewall Demo](assets/PrivacyFirewall.gif)
+<p align="center">
+  <strong>Stop AI Data Leaks Before They Happen</strong><br>
+  100% Local • Zero Server • Full Control
+</p>
 
-**PrivacyFirewall** is a **local-first PII and secrets firewall** for AI tools like ChatGPT, Claude, and Gemini.It blocks risky paste events, warns as you type, and (optionally) uses a **lightweight on-device Transformer model** for deeper PII detection.
+<p align="center">
+  <img src="https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white" alt="Chrome Extension">
+  <img src="https://img.shields.io/badge/AI-ONNX%20Runtime-FF6F00?logo=onnx&logoColor=white" alt="ONNX Runtime">
+  <img src="https://img.shields.io/badge/Privacy-100%25%20Local-34A853" alt="100% Local">
+  <img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License">
+</p>
 
-🔒 **No data ever leaves your machine.**Everything runs **locally in your browser** or through an **optional local API**.You can verify this by inspecting the network panel and reading the open-source code.
+<p align="center">
+  <img src="assets/PrivacyFirewall.gif" alt="PrivacyFirewall Demo" width="700">
+</p>
 
-🚨 **Why This Project Exists**
-------------------------------
+---
 
-Modern AI tools make it extremely easy to leak sensitive information:
+## The Problem
 
-*   Emails & phone numbers
-    
-*   API keys & credentials
-    
-*   Customer or employee data
+Every day, sensitive data gets leaked to AI chatbots:
 
-*   IP & MAC address  
-    
-*   Internal logs & stack traces
-    
-*   Regulated personal information (PII/PHI)
-    
+- 📧 **Customer emails** pasted into ChatGPT for summarization
+- 🔑 **API keys** accidentally included in code snippets
+- 👤 **Employee names** shared in meeting notes
+- 💳 **Credit card numbers** copied from support tickets
+- 🏠 **Home addresses** in shipping data analysis
 
-Traditional enterprise DLP tools don’t cover **AI chat prompts**.
+**Traditional DLP tools don't protect AI chat interfaces.** PrivacyFirewall does.
 
-**PrivacyFirewall adds a zero-trust privacy shield BEFORE your text ever reaches a third-party AI system.**
+---
 
-### What PrivacyFirewall gives you:
+## The Solution
 
-*   ✋ **Human-in-the-loop protection** for accidental leaks
-    
-*   🔒 **100% local processing** (browser + localhost only)
-    
-*   ⚡ **Practical protection** (regex + optional transformer NER)
-    
-*   🧩 **Friendly UX** (warnings, paste-block modals, override options)
-    
-*   🛠 **OSS and auditable** (MV3 + FastAPI + Hugging Face stack)
-    
+**PrivacyFirewall** intercepts sensitive data *before* it reaches AI tools — running **entirely in your browser** with no external servers.
 
-🧠 **How It Works**
--------------------
+### Key Features
 
-### **Two Layers of Protection**
+| Feature | Description |
+|---------|-------------|
+| 🛡️ **Paste Protection** | Blocks sensitive pastes with a confirmation modal |
+| ⌨️ **Real-time Typing Detection** | Warns as you type sensitive data |
+| 🧠 **Local AI Detection** | BERT NER model runs in-browser via ONNX/WASM |
+| ⚙️ **Configurable Rules** | Enable/disable specific PII types, set block vs warn |
+| 🌐 **Site Management** | Protect ChatGPT, Claude, Gemini, Copilot, and more |
+| 🔒 **Zero Data Transmission** | Nothing ever leaves your machine |
 
-1.  **Lite Mode (regex-only)**Runs instantly in the extension — no setup needed.
-    
-2.  **AI Mode (optional, local LLM)**Uses a local FastAPI agent + transformer model for deeper detection(People, organizations, locations, contextual entities).
-    
+---
 
-### **High-level architecture**
+## How It Works
+
 ```mermaid
 graph TD
-    A[User Pastes/Types Text]:::blueNode -->|Intercept| B(Chrome Extension):::blueNode
-    B -->|Regex Check| C{Contains Secrets/PII?}
-    C -->|Yes & Paste| D[BLOCK & WARN]:::redNode
-    C -->|Yes & Typing| E[SHOW WARNING BANNER]:::redNode
-    C -->|No| F{Local Engine Online?}
-    F -->|No| G[Allow]:::blueNode
-    F -->|Yes| H[Python Local Engine]:::blueNode
-    H -->|BERT Model| I{AI Detected PII?}
-    I -->|Yes & Paste| D
-    I -->|Yes & Typing| E
-    I -->|No| G
+    A[User Pastes/Types Text] -->|Intercept| B(Content Script)
+    B -->|Layer 1| C{Regex Scan}
+    C -->|Match Found| D{Block or Warn?}
+    D -->|Block| E[🛑 Show Modal]
+    D -->|Warn| F[⚠️ Show Banner]
+    C -->|No Match| G{AI Engine Ready?}
+    G -->|Yes| H[ONNX Model in Browser]
+    H -->|Entities Found| D
+    H -->|Clean| I[✅ Allow]
+    G -->|No| I
 
-    classDef blueNode fill:#2563eb,stroke:#1e40af,color:#fff
-    classDef redNode fill:#dc2626,stroke:#b91c1c,color:#fff
+    style E fill:#dc2626,color:#fff
+    style F fill:#f59e0b,color:#fff
+    style I fill:#22c55e,color:#fff
 ```
 
-*   **Regex Mode** covers secrets quickly
-    
-*   **AI Mode** enhances detection when the local engine is running
-    
-*   If the agent goes offline → extension falls back automatically
-    
+### Two-Layer Protection
 
-🚀 **Quickstart (Local Development)**
-=====================================
+1. **Instant Regex Layer** — Catches obvious patterns (emails, credit cards, API keys) in milliseconds
+2. **AI Layer** — BERT Named Entity Recognition detects names, organizations, and locations that regex misses
 
-**Prerequisites**
------------------
+Both layers run **100% locally** in your browser. No Python server. No API calls. No cloud.
 
-*   Python **3.10+**
-    
-*   Chrome/Chromium/Edge
-    
-*   Git
-    
+---
 
-**1) Clone**
-------------
-```
-$ git clone https://github.com/privacyshield-ai/privacy-firewall.git
+## Quick Start
 
-$ cd privacy-firewall
+### Option 1: Download & Install (No Code Required)
 
-```
+> **Perfect for trying it out** — takes 30 seconds
 
+1. **Download** the latest release:
 
-**2) Run the Local Engine (optional for AI Mode)**
---------------------------------------------------
+   [![Download Extension](https://img.shields.io/badge/Download-Latest%20Release-4285F4?style=for-the-badge&logo=googlechrome)](https://github.com/ArnabKar/privacy-firewall/releases/latest/download/privacyfirewall-extension.zip)
 
-```
-$ cd src/engine  python -m venv .venv  
+2. **Unzip** the downloaded file
 
-$ source .venv/bin/activate       # Windows: .venv\Scripts\activate
+3. **Install in Chrome**:
+   - Go to `chrome://extensions`
+   - Enable **Developer mode** (toggle in top right)
+   - Click **Load unpacked**
+   - Select the unzipped folder
 
-$ pip install --upgrade 
+4. **Done!** Visit [ChatGPT](https://chat.openai.com) and try pasting:
+   ```
+   Contact john.doe@company.com or call 555-123-4567
+   ```
 
-$ pip install -r requirements.txt
+---
 
-$ uvicorn main:app --host 127.0.0.1 --port 8765   
+### Option 2: Build from Source (For Developers)
 
-```
-*   First run downloads dslim/bert-base-NER (~400MB) to ~/.cache/huggingface.
-    
-*   [http://127.0.0.1:8765/health](http://127.0.0.1:8765/health) → {"status":"ok"}
-    
+<details>
+<summary>Click to expand developer instructions</summary>
 
-**3) Install the Chrome Extension**
------------------------------------
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/ArnabKar/privacy-firewall.git
+   cd privacy-firewall
+   ```
 
-1.  Visit: chrome://extensions
-    
-2.  Enable **Developer mode**
-    
-3.  Click **Load unpacked**
-    
-4.  Select: src/extension/
-    
+2. **Build the extension**
+   ```bash
+   cd src/extension
+   npm install
+   node build.js
+   ```
 
-You now have **Lite Mode** running with regex-based detection.
+3. **Load in Chrome**
+   - Navigate to `chrome://extensions`
+   - Enable **Developer mode** (top right)
+   - Click **Load unpacked**
+   - Select the `src/extension/dist` folder
 
-**4) Try It Out**
------------------
+</details>
 
-Go to:
+---
 
-*   https://chat.openai.com
-    
-*   https://claude.ai
-    
-*   https://gemini.google.com
-    
+## Screenshots
 
-Paste:
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/modal-screenshot.png" alt="Block Modal"><br>
+      <strong>Paste Blocked</strong><br>
+      <em>Sensitive data detected with highlighting</em>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/banner-screenshot.png" alt="Warning Banner"><br>
+      <strong>Typing Warning</strong><br>
+      <em>Real-time detection as you type</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="assets/popup-screenshot.png" alt="Popup"><br>
+      <strong>Extension Popup</strong><br>
+      <em>Quick status and settings access</em>
+    </td>
+    <td align="center">
+      <img src="assets/settings-screenshot.png" alt="Settings"><br>
+      <strong>Settings Page</strong><br>
+      <em>Full control over detection rules</em>
+    </td>
+  </tr>
+</table>
 
-```
-My email is john.doe@example.com   `
+---
 
-```
+## Detection Coverage
 
-→ Paste is intercepted, modal appears.
+### Regex Detection (Instant)
 
-Paste:
+| Type | Examples |
+|------|----------|
+| 📧 Email | `user@example.com` |
+| 📱 Phone | `555-123-4567`, `+1 (555) 123-4567` |
+| 💳 Credit Card | `4532-0151-1283-0366` |
+| 🔢 SSN | `123-45-6789` |
+| 🔑 AWS Keys | `AKIAIOSFODNN7EXAMPLE` |
+| 🎫 JWT Tokens | `eyJhbGciOiJIUzI1NiJ9...` |
+| 🔐 Private Keys | `-----BEGIN RSA PRIVATE KEY-----` |
+| 🌐 IP Addresses | `192.168.1.1` |
+| 📍 MAC Addresses | `00:1A:2B:3C:4D:5E` |
+| 🏠 US Addresses | `123 Main St, New York, NY 10001` |
 
-```
-AKIAIOSFODNN7EXAMPLE
+### AI Detection (BERT NER)
 
-```
-→ Detected as AWS key → blocked.
+| Entity Type | Examples |
+|-------------|----------|
+| 👤 PERSON | `John Smith`, `Dr. Sarah Thompson` |
+| 🏢 ORGANIZATION | `Acme Corp`, `Goldman Sachs` |
+| 📍 LOCATION | `New York`, `Silicon Valley` |
 
-Enable AI Mode (when popup UI is ready), type:
+---
 
-```
- Meeting notes from Sarah Thompson at HR...   
+## Configuration
 
-```
+### Settings Page
 
-→ Local transformer flags PERSON → warns you.
+Access via the extension popup → **Open Settings**
 
-🔍 **Detection Coverage**
-=========================
+- **PII Rules**: Enable/disable detection for each type
+- **Block vs Warn**: Choose blocking modal or warning banner
+- **Protected Sites**: Manage which AI tools are protected
+- **AI Confidence**: Adjust sensitivity threshold (0-100%)
+- **Behavior**: Toggle real-time typing detection
 
-### **Regex Mode (Fast, Offline, Default)**
+### Protected Sites (Default)
 
-*   Email address
-    
-*   Phone number
-    
-*   Credit card candidate
-    
-*   MAC address
-    
-*   IPv4 address
-    
-*   AWS access keys
-    
-*   JWT tokens
-    
-*   Private key blocks
-    
-*   Generic API key / hash patterns
-    
-*   US SSN (basic pattern)
-    
+- ✅ ChatGPT (`chat.openai.com`, `chatgpt.com`)
+- ✅ Claude (`claude.ai`)
+- ✅ Gemini (`gemini.google.com`)
+- ✅ Copilot (`copilot.microsoft.com`)
+- ✅ Poe (`poe.com`)
+- ✅ Grok (`grok.com`)
+- ✅ DeepSeek (`chat.deepseek.com`)
 
-### **AI Mode (Local Transformer)**
+---
 
-Powered by dslim/bert-base-NER:
-
-*   PERSON
-    
-*   ORGANIZATION
-    
-*   LOCATION
-    
-*   Additional named entities
-    
-*   Helpful for ambiguous or context-based leakage
-    
-
-📁 **Project Layout**
-=====================
-
-
-🧪 **Development**
-==================
-
-### **Run Detection Tests**
+## Architecture
 
 ```
-src/extension/        Chrome MV3 extension (content script, background worker, UI assets)
-src/engine/           FastAPI service + transformer model wrapper
-src/engine/models/    Model utilities (Hugging Face pipeline)
-src/engine/tests/     Basic test harness for detection
+src/extension/
+├── manifest.json          # Chrome MV3 manifest
+├── background.js          # Service worker (message routing)
+├── content-script.js      # Page injection (paste/typing interception)
+├── offscreen.js           # AI model execution environment
+├── offscreen.html         # Offscreen document container
+├── lib/
+│   └── transformer-detector.js  # BERT NER model wrapper
+├── modules/
+│   ├── config.js          # Regex patterns & constants
+│   ├── scanner.js         # Detection orchestration
+│   ├── settings.js        # Chrome storage management
+│   ├── event-handlers.js  # Paste & input handlers
+│   └── ui/
+│       ├── modal.js       # Blocking modal component
+│       ├── banner.js      # Warning banner component
+│       └── styles.js      # Shadow DOM styles
+└── ui/
+    ├── popup.html/js/css  # Extension popup
+    └── settings.html/js/css # Settings page
 ```
 
-### **Model & Cache Notes**
+### Technology Stack
 
-*   HuggingFace models live in ~/.cache/huggingface/
-    
-*   Delete this directory to force a fresh download
-    
+- **Extension**: Chrome Manifest V3, ES Modules
+- **AI Runtime**: ONNX Runtime Web (WASM)
+- **Model**: `Xenova/bert-base-NER-uncased` via Hugging Face Transformers.js
+- **UI Isolation**: Shadow DOM (no CSS conflicts with host pages)
 
-🛠️ **Future Improvements**
-===========================
+---
 
-*   Extension settings UI (enable/disable regex/AI modes)
-    
-*   Add per-site allow/deny lists
-    
-*   Add secret-type redaction instead of full block
-    
-*   Package engine as a binary or desktop app
-    
-*   Explore transformer.js for in-browser inference.
-    
-*   Automated CI + browser testing
-    
+## Privacy & Security
 
-❗ Troubleshooting
-=================
+### What We DON'T Do
 
-### **“Engine Offline” Banner**
+- ❌ Send data to external servers
+- ❌ Log or store your text
+- ❌ Use analytics or telemetry
+- ❌ Make any network requests (except model download on first run)
 
-*   Ensure the Python engine is running
-    
-*   Confirm nothing else uses port 8765
-    
-*   Lite mode will still block regex-based secrets
-    
+### What We DO
 
-### **“It didn’t flag a name I typed”**
+- ✅ Process everything locally in your browser
+- ✅ Cache the AI model locally after first download
+- ✅ Store settings in Chrome's encrypted sync storage
+- ✅ Provide fully auditable open-source code
 
-*   Ensure AI Mode is enabled + engine is online
-    
-*   NER models are probabilistic; long names work best
-    
-*   Confidence threshold is tunable in transformer\_detector.py
-    
+**Verify yourself**: Open DevTools → Network tab. You'll see zero outbound requests during detection.
 
-🤝 **Contributing**
-===================
+---
 
-PRs and issues are welcome!Please include:
+## Development
 
-*   OS & browser version
-    
-*   Reproduction steps
-    
-*   Model version (if reporting AI false positives/negatives)
-    
+### Build
 
-🔐 **Security & Privacy Notes**
-===============================
+```bash
+cd src/extension
+npm install
+node build.js
+```
 
-*   **No prompts or text ever leave your machine**
-    
-*   Extension communicates **only** with:
-    
-    *   Browser local context
-        
-    *   Optional localhost API at 127.0.0.1:8765
-        
-*   No analytics, telemetry, or external logging
-    
-*   Review src/extension/content-script.js and DevTools → Network tabto verify behavior
-    
+### Run Tests
 
-📄 **License**
-==============
+```bash
+node tests/content-script.test.js
+```
 
-MIT License.See [LICENSE](LICENSE) for full text.
+### Project Requirements
+
+- Chrome 120+ (for Offscreen Documents API)
+- Node.js 18+ (for building)
+
+---
+
+## Troubleshooting
+
+### "AI Model Loading..." stays forever
+
+- Check DevTools console for errors
+- The model (~50MB) downloads on first run — may take a minute on slow connections
+- Try clearing extension data and reloading
+
+### Extension doesn't detect on some sites
+
+- Check if the site is in your protected sites list
+- Some sites use iframes — detection may be limited
+- Open an issue with the site URL
+
+### False positives/negatives
+
+- Adjust AI confidence threshold in settings
+- Some patterns (like short names) may not be detected
+- Report edge cases as issues
+
+---
+
+## Roadmap
+
+- [ ] Firefox/Safari support
+- [ ] Custom regex patterns via settings
+- [ ] Redaction mode (replace vs block)
+- [ ] Export/import settings
+- [ ] Keyboard shortcuts
+- [ ] Enterprise policy support
+
+---
+
+## Contributing
+
+PRs welcome! Please include:
+
+- Browser version
+- Steps to reproduce
+- Expected vs actual behavior
+
+---
+
+## License
+
+MIT License — see [LICENSE](LICENSE)
+
+---
+
+<p align="center">
+  <strong>Built for privacy. Runs locally. Open source.</strong><br>
+  <a href="https://github.com/ArnabKar/privacy-firewall/issues">Report Bug</a> •
+  <a href="https://github.com/ArnabKar/privacy-firewall/issues">Request Feature</a>
+</p>

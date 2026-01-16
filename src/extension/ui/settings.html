@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrivacyWall Settings</title>
+  
+  <!-- Pico CSS - Minimal CSS Framework -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <main class="container">
+    <!-- Header -->
+    <header>
+      <hgroup>
+        <h1>🛡️ PrivacyWall Settings</h1>
+        <p>Configure your privacy protection preferences. You can change these anytime.</p>
+      </hgroup>
+    </header>
+
+    <!-- PII Detection Controls -->
+    <article>
+      <header>
+        <h2>PII Detection Controls</h2>
+        <p>What sensitive data should PrivacyWall watch for?</p>
+      </header>
+      
+      <figure>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Category</th>
+              <th scope="col">Detect</th>
+              <th scope="col">Block Paste</th>
+              <th scope="col">Severity</th>
+            </tr>
+          </thead>
+          <tbody id="pii-rules-body">
+            <!-- Populated by JavaScript -->
+          </tbody>
+        </table>
+      </figure>
+      
+      <footer>
+        <small>
+          <strong>Detect</strong> = Scan for this data type<br>
+          <strong>Block Paste</strong> = ON: Block paste & require action | OFF: Show warning banner only<br>
+          <em>Note: Typing detection always shows a non-blocking warning banner</em>
+        </small>
+      </footer>
+    </article>
+
+    <!-- Protected Websites -->
+    <article>
+      <header>
+        <h2>Protected Websites</h2>
+        <p>Which AI chatbots should PrivacyWall monitor?</p>
+      </header>
+      
+      <div class="sites-grid" id="sites-list">
+        <!-- Populated by JavaScript -->
+      </div>
+      
+      <hr>
+      
+      <label>
+        <input type="checkbox" id="protect-all-sites" role="switch">
+        <strong>All websites</strong> (Monitor everywhere)
+      </label>
+    </article>
+
+    <!-- AI Detection Sensitivity -->
+    <article>
+      <header>
+        <h2>AI Detection Sensitivity</h2>
+        <p>How confident should the AI be before flagging something?</p>
+      </header>
+      
+      <label>
+        AI Confidence Threshold: <strong id="threshold-display">50%</strong>
+        <input type="range" id="ai-threshold" min="20" max="80" value="50">
+      </label>
+      <small>
+        Lower = catches more (may have false positives) | 
+        Higher = catches less (fewer false positives)
+      </small>
+    </article>
+
+    <!-- Behavior Options -->
+    <article>
+      <header>
+        <h2>Behavior Options</h2>
+      </header>
+      
+      <label>
+        <input type="checkbox" id="show-pasted-text" role="switch" checked>
+        <strong>Show pasted text in warning modal</strong>
+      </label>
+      <small>See exactly what triggered the warning</small>
+      
+      <label>
+        <input type="checkbox" id="strict-mode" role="switch">
+        <strong>Strict Mode - Auto-block without asking</strong>
+      </label>
+      <small>Automatically removes sensitive data without prompting</small>
+      
+      <label>
+        <input type="checkbox" id="scan-while-typing" role="switch" checked>
+        <strong>Real-time typing detection</strong>
+      </label>
+      <small>Shows warning banner while you type (non-blocking)</small>
+    </article>
+
+    <!-- Footer Actions -->
+    <footer>
+      <div class="grid">
+        <button id="reset-btn" class="secondary outline">Reset to Defaults</button>
+        <button id="save-btn">Save Settings</button>
+      </div>
+      
+      <article id="model-status" aria-busy="true">
+        AI Model: Checking...
+      </article>
+    </footer>
+  </main>
+
+  <script type="module" src="settings.js"></script>
+</body>
+</html>
