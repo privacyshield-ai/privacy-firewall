@@ -94,7 +94,7 @@ Both layers run **100% locally** in your browser. No Python server. No API calls
 
 1. **Download** the latest release:
 
-   [![Download Extension](https://img.shields.io/badge/Download-Latest%20Release-4285F4?style=for-the-badge&logo=googlechrome)](https://github.com/ArnabKar/privacy-firewall/releases/latest/download/privacyfirewall-extension.zip)
+   [![Download Extension](https://img.shields.io/badge/Download-Latest%20Release-4285F4?style=for-the-badge&logo=googlechrome)](https://github.com/privacyshield-ai/privacy-firewall/releases/download/v2.0.0/privacyfirewall-extension.zip)
 
 2. **Unzip** the downloaded file
 
