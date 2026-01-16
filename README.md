@@ -4,6 +4,10 @@
 
 <h1 align="center">PrivacyFirewall</h1>
 
+👋 **If you're trying PrivacyFirewall, please star the repo!** 
+> It helps others discover the project and motivates development.
+> Takes 2 seconds → ⭐ (top right)
+
 <p align="center">
   <strong>Stop AI Data Leaks Before They Happen</strong><br>
   100% Local • Zero Server • Full Control
